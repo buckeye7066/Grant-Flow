@@ -1,0 +1,175 @@
+import axios from 'axios'
+
+// Get base URL from environment or default to relative path
+const getBaseUrl = () => {
+  // In production, use the VITE_API_URL if set, otherwise use relative path
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL
+  }
+  // For development or same-origin deployment
+  return '/api'
+}
+
+const api = axios.create({
+  baseURL: getBaseUrl(),
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
+
+// Add request interceptor for auth tokens if needed
+api.interceptors.request.use(config => {
+  const session = localStorage.getItem('grantflow_session')
+  if (session) {
+    try {
+      const { sessionId } = JSON.parse(session)
+      if (sessionId) {
+        config.headers['X-Session-ID'] = sessionId
+      }
+    } catch {}
+  }
+  return config
+})
+
+// Add response interceptor for error handling
+api.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('grantflow_session')
+      window.location.href = '/grantflow/login'
+    }
+    return Promise.reject(error)
+  }
+)
+
+// Organizations
+export const organizationsApi = {
+  list: () => api.get('/organizations').then(r => r.data),
+  get: (id) => api.get(`/organizations/${id}`).then(r => r.data),
+  create: (data) => api.post('/organizations', data).then(r => r.data),
+  update: (id, data) => api.put(`/organizations/${id}`, data).then(r => r.data),
+  delete: (id) => api.delete(`/organizations/${id}`).then(r => r.data),
+}
+
+// Opportunities
+export const opportunitiesApi = {
+  list: (params) => api.get('/opportunities', { params }).then(r => r.data),
+  get: (id) => api.get(`/opportunities/${id}`).then(r => r.data),
+  search: (query) => api.get(`/opportunities/search/${query}`).then(r => r.data),
+  create: (data) => api.post('/opportunities', data).then(r => r.data),
+  update: (id, data) => api.put(`/opportunities/${id}`, data).then(r => r.data),
+  delete: (id) => api.delete(`/opportunities/${id}`).then(r => r.data),
+}
+
+// Pipeline
+export const pipelineApi = {
+  list: (params) => api.get('/pipeline', { params }).then(r => r.data),
+  summary: (params) => api.get('/pipeline/summary', { params }).then(r => r.data),
+  get: (id) => api.get(`/pipeline/${id}`).then(r => r.data),
+  create: (data) => api.post('/pipeline', data).then(r => r.data),
+  update: (id, data) => api.put(`/pipeline/${id}`, data).then(r => r.data),
+  move: (id, stage) => api.post(`/pipeline/${id}/move`, { stage }).then(r => r.data),
+  delete: (id) => api.delete(`/pipeline/${id}`).then(r => r.data),
+}
+
+// Matches
+export const matchesApi = {
+  list: (params) => api.get('/matches', { params }).then(r => r.data),
+  get: (id) => api.get(`/matches/${id}`).then(r => r.data),
+  addToPipeline: (id) => api.post(`/matches/${id}/add-to-pipeline`).then(r => r.data),
+  delete: (id) => api.delete(`/matches/${id}`).then(r => r.data),
+}
+
+// AI
+export const aiApi = {
+  smartMatch: (data) => api.post('/ai/smart-match', data).then(r => r.data),
+  itemSearch: (data) => api.post('/ai/item-search', data).then(r => r.data),
+  analyzeMatch: (data) => api.post('/ai/analyze-match', data).then(r => r.data),
+  generateGrantSection: (data) => api.post('/ai/generate-grant-section', data).then(r => r.data),
+  askAnya: (data) => api.post('/ai/ask-anya', data).then(r => r.data),
+  autofillSection: (data) => api.post('/ai/autofill-section', data).then(r => r.data),
+  parseProfileInput: (data) => api.post('/ai/parse-profile-input', data).then(r => r.data),
+}
+
+// Documents
+export const documentsApi = {
+  list: (organizationId) => api.get(`/documents/${organizationId}`).then(r => r.data),
+  upload: async (organizationId, file, category = 'other', isPhi = false) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('category', category)
+    formData.append('is_phi', isPhi)
+    return api.post(`/documents/${organizationId}/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }).then(r => r.data)
+  },
+  paste: (organizationId, imageData, category = 'screenshot') => 
+    api.post(`/documents/${organizationId}/paste`, { imageData, category }).then(r => r.data),
+  saveText: (organizationId, text, category = 'notes', description = '') =>
+    api.post(`/documents/${organizationId}/text`, { text, category, description }).then(r => r.data),
+  delete: (organizationId, documentId) => 
+    api.delete(`/documents/${organizationId}/${documentId}`).then(r => r.data),
+  update: (organizationId, documentId, data) =>
+    api.put(`/documents/${organizationId}/${documentId}`, data).then(r => r.data),
+  getUrl: (organizationId, filename) => `${getBaseUrl()}/documents/${organizationId}/file/${filename}`,
+}
+
+// Clients (for admin and auth)
+export const clientsApi = {
+  list: () => api.get('/clients').then(r => r.data),
+  get: (id) => api.get(`/clients/${id}`).then(r => r.data),
+  create: (data) => api.post('/clients', data).then(r => r.data),
+  update: (id, data) => api.put(`/clients/${id}`, data).then(r => r.data),
+  delete: (id) => api.delete(`/clients/${id}`).then(r => r.data),
+  login: (access_code) => api.post('/clients/login', { access_code }).then(r => r.data),
+  addService: (id, data) => api.post(`/clients/${id}/services`, data).then(r => r.data),
+  updateService: (serviceId, data) => api.put(`/clients/services/${serviceId}`, data).then(r => r.data),
+  addPayment: (id, data) => api.post(`/clients/${id}/payments`, data).then(r => r.data),
+  logHours: (id, data) => api.post(`/clients/${id}/hours`, data).then(r => r.data),
+  proBonoReport: (year) => api.get('/clients/reports/pro-bono', { params: { year } }).then(r => r.data),
+}
+
+// Crawlers
+export const crawlersApi = {
+  getStatus: () => api.get('/crawlers/status').then(r => r.data),
+  getList: () => api.get('/crawlers/list').then(r => r.data),
+  getStats: () => api.get('/crawlers/stats').then(r => r.data),
+  runAll: (profileIds) => api.post('/crawlers/run-all', { profileIds }).then(r => r.data),
+  run: (name, profileIds) => api.post(`/crawlers/run/${name}`, { profileIds }).then(r => r.data),
+  runForProfile: (profileId, crawlers) => api.post(`/crawlers/run-for-profile/${profileId}`, { crawlers }).then(r => r.data),
+  crawlUrl: (data) => api.post('/crawlers/crawl-url', data).then(r => r.data),
+  getMatches: (profileId) => api.get(`/crawlers/matches/${profileId}`).then(r => r.data),
+}
+
+// Analytics
+export const analyticsApi = {
+  trackPageView: (data) => api.post('/analytics/pageview', data).catch(() => {}),
+  createSession: (data) => api.post('/analytics/session', data).then(r => r.data),
+  endSession: (sessionId) => api.post(`/analytics/session/${sessionId}/end`).catch(() => {}),
+  completeOnboarding: (clientId) => api.post('/analytics/onboarding-complete', { clientId }),
+  getPreferences: (clientId) => api.get(`/analytics/preferences/${clientId}`).then(r => r.data),
+  updatePreferences: (clientId, data) => api.put(`/analytics/preferences/${clientId}`, data).then(r => r.data),
+  getAnnouncements: (clientId) => api.get('/analytics/announcements', { params: { clientId } }).then(r => r.data),
+  // Admin
+  getSummary: (days) => api.get('/analytics/admin/summary', { params: { days } }).then(r => r.data),
+  getUsers: (limit, offset) => api.get('/analytics/admin/users', { params: { limit, offset } }).then(r => r.data),
+  getUserActivity: (clientId) => api.get(`/analytics/admin/users/${clientId}/activity`).then(r => r.data),
+  getPages: (days) => api.get('/analytics/admin/pages', { params: { days } }).then(r => r.data),
+  getTimeline: (days) => api.get('/analytics/admin/timeline', { params: { days } }).then(r => r.data),
+  createAnnouncement: (data) => api.post('/analytics/announcements', data).then(r => r.data),
+  updateAnnouncement: (id, data) => api.put(`/analytics/announcements/${id}`, data).then(r => r.data),
+  deleteAnnouncement: (id) => api.delete(`/analytics/announcements/${id}`).then(r => r.data),
+  getAllAnnouncements: () => api.get('/analytics/admin/announcements').then(r => r.data),
+}
+
+// Import
+export const importApi = {
+  base44: (data) => api.post('/import/base44', { data }).then(r => r.data),
+  stats: () => api.get('/import/stats').then(r => r.data),
+}
+
+// Health check
+export const healthCheck = () => api.get('/health').then(r => r.data)
+
+export default api
