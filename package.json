@@ -1,18 +1,24 @@
 {
-  "name": "grantflow-local",
+  "name": "grantflow-backend",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:backend": "cd backend && npm run dev",
-    "dev:frontend": "cd frontend && npm run dev",
-    "build": "cd frontend && npm run build",
-    "start": "cd backend && npm start"
-  },
-  "devDependencies": {
-    "concurrently": "^8.2.2"
+    "dev": "node --watch server.js",
+    "start": "node server.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.87.1"
+    "@anthropic-ai/sdk": "^0.71.2",
+    "axios": "^1.13.2",
+    "better-sqlite3": "^9.4.3",
+    "cheerio": "^1.1.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.1",
+    "express": "^4.18.2",
+    "mammoth": "^1.11.0",
+    "multer": "^2.0.2",
+    "openai": "^4.28.0",
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "^5.4.449",
+    "uuid": "^9.0.1"
   }
 }
